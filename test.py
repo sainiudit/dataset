@@ -1,43 +1,40 @@
 import fitz  # PyMuPDF
+import re
 
-def extract_sections(pdf_path, section_keywords):
-    doc = fitz.open(pdf_path)
-    sections = {}
+def extract_headers_and_paragraphs(pdf_path):
+    pdf_document = fitz.open(pdf_path)
+    headers_and_paragraphs = []
     
-    for page_num in range(doc.page_count):
-        page = doc[page_num]
-        text = page.get_text()
+    current_header = None
+    current_paragraph = ""
+    
+    for page_num in range(pdf_document.page_count):
+        page = pdf_document[page_num]
+        text = page.get_text("text")
         
-        for section_name in section_keywords:
-            if section_name.lower() in text.lower():
-                start_idx = text.lower().index(section_name.lower())
-                end_idx = start_idx + len(section_name)
-                section_text = text[end_idx:]
-                
-                # Find the next section's start index if it exists
-                next_section_start_idx = len(section_text)
-                for next_section in section_keywords:
-                    next_section_idx = section_text.lower().find(next_section.lower())
-                    if next_section_idx != -1 and next_section_idx < next_section_start_idx:
-                        next_section_start_idx = next_section_idx
-                
-                section_text = section_text[:next_section_start_idx].strip()
-                
-                if section_name in sections:
-                    sections[section_name].append(section_text)
-                else:
-                    sections[section_name] = [section_text]
+        font_properties = []
+        for block in page.get_text("blocks"):
+            for line in block[4]:
+                font_properties.append(line[3])  # Font properties for each line
+        
+        for line, font_property in zip(text.split('\n'), font_properties):
+            if re.search(r'\bHeader \d+\b', line):  # Check for header format like "Header 1", "Header 2", etc.
+                if current_header is not None:
+                    headers_and_paragraphs.append((current_header, current_paragraph))
+                current_header = line.strip()
+                current_paragraph = ""
+            else:
+                current_paragraph += line + '\n'
     
-    doc.close()
-    return sections
+    if current_header is not None:
+        headers_and_paragraphs.append((current_header, current_paragraph))
+    
+    pdf_document.close()
+    return headers_and_paragraphs
 
 if __name__ == "__main__":
     pdf_path = "your_pdf_file.pdf"
-    section_keywords = ["section 1", "section 2", "section 3"]  # Add your section keywords here
+    extracted_data = extract_headers_and_paragraphs(pdf_path)
     
-    extracted_sections = extract_sections(pdf_path, section_keywords)
-    
-    for section_name, section_texts in extracted_sections.items():
-        print(f"{section_name}:")
-        for i, section_text in enumerate(section_texts, start=1):
-            print(f"Subsection {i}: {section_text}\n")
+    for header, paragraph in extracted_data:
+        print(f"Header: {header}\nParagraph:\n{paragraph}")
