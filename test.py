@@ -15,10 +15,10 @@ def extract_headers_and_paragraphs(pdf_path):
         font_properties = []
         for block in page.get_text("blocks"):
             for line in block[4]:
-                font_properties.append(line[3])  # Font properties for each line
+                font_properties.append(line[3] if len(line) > 3 else None)  # Avoid index out of range
         
         for line, font_property in zip(text.split('\n'), font_properties):
-            if re.search(r'\bHeader \d+\b', line):  # Check for header format like "Header 1", "Header 2", etc.
+            if re.search(r'\bHeader \d+\b', line):
                 if current_header is not None:
                     headers_and_paragraphs.append((current_header, current_paragraph))
                 current_header = line.strip()
