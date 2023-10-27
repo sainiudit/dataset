@@ -1,40 +1,32 @@
-import fitz  # PyMuPDF
-import re
+from transformers import GPT2Tokenizer, GPT2LMHeadModel
+import torch
 
-def extract_headers_and_paragraphs(pdf_path):
-    pdf_document = fitz.open(pdf_path)
-    headers_and_paragraphs = []
-    
-    current_header = None
-    current_paragraph = ""
-    
-    for page_num in range(pdf_document.page_count):
-        page = pdf_document[page_num]
-        text = page.get_text("text")
-        
-        font_properties = []
-        for block in page.get_text("blocks"):
-            for line in block[4]:
-                font_properties.append(line[3] if len(line) > 3 else None)  # Avoid index out of range
-        
-        for line, font_property in zip(text.split('\n'), font_properties):
-            if re.search(r'\bHeader \d+\b', line):
-                if current_header is not None:
-                    headers_and_paragraphs.append((current_header, current_paragraph))
-                current_header = line.strip()
-                current_paragraph = ""
-            else:
-                current_paragraph += line + '\n'
-    
-    if current_header is not None:
-        headers_and_paragraphs.append((current_header, current_paragraph))
-    
-    pdf_document.close()
-    return headers_and_paragraphs
+tokenizer = GPT2Tokenizer.from_pretrained('gpt2')
+tokenizer.padding_side = "left" 
+tokenizer.pad_token = tokenizer.eos_token # to avoid an error
+model = GPT2LMHeadModel.from_pretrained('gpt2')
 
-if __name__ == "__main__":
-    pdf_path = "your_pdf_file.pdf"
-    extracted_data = extract_headers_and_paragraphs(pdf_path)
-    
-    for header, paragraph in extracted_data:
-        print(f"Header: {header}\nParagraph:\n{paragraph}")
+device = 'cuda' if torch.cuda.is_available() else 'cpu'
+
+texts = ["this is a first prompt", "this is a second prompt"]
+encoding = tokenizer(texts, return_tensors='pt').to(device)
+with torch.no_grad():
+    generated_ids = model.generate(**encoding)
+generated_texts = tokenizer.batch_decode(generated_ids, skip_special_tokens=True)
+
+
+from transformers import GPT2Tokenizer, GPT2LMHeadModel
+import torch
+
+tokenizer = GPT2Tokenizer.from_pretrained('gpt2')
+tokenizer.padding_side = "left" 
+tokenizer.pad_token = tokenizer.eos_token # to avoid an error
+model = GPT2LMHeadModel.from_pretrained('gpt2')
+
+device = 'cuda' if torch.cuda.is_available() else 'cpu'
+
+texts = ["this is a first prompt", "this is a second prompt"]
+encoding = tokenizer(texts, padding=True, return_tensors='pt').to(device)
+with torch.no_grad():
+    generated_ids = model.generate(**encoding)
+generated_texts = tokenizer.batch_decode(generated_ids, skip_special_tokens=True)
