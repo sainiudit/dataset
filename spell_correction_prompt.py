@@ -1,0 +1,1 @@
+Given a voice transcript message from a customer, please correct any errors in the text. Do not add or modify any content other than correcting inaccuracies in the customer's message. Return the corrected message exactly as it should be.
